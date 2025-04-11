@@ -29,11 +29,14 @@ router.post('/users/:userId', async (req: Request, res: Response) => {
         const {username, email } = req.body;
         
         const result = await service.createUser(userId, username, email);
-
         res.status(201).json({ message: 'User created successfully', user: result });
     } catch (error) {
         console.error('Error creating user:', error);
-        res.status(500).json({ error: 'Failed to create user' });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        res.status(500).json({ 
+            error: 'Failed to create user',
+            details: errorMessage
+        });
     }
 });
 

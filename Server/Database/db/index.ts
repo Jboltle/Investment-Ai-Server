@@ -1,11 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Load environment variables from root project directory
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Check if DATABASE_URL is defined
 if (!process.env.DATABASE_URL) {
@@ -13,14 +8,26 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-// Create a Postgres client
+// Create a single Postgres client instance
+const client = postgres(process.env.DATABASE_URL, {
+  max: 10, // Maximum number of connections
+  idle_timeout: 20, // Idle connection timeout in seconds
+  connect_timeout: 10, // Connection timeout in seconds
+  prepare: false, // Disable prepared statements for Railway deployment
+});
 
-const client = postgres(process.env.DATABASE_URL);
+// Create a single Drizzle instance
+const drizzleInstance = drizzle(client, { schema });
 
-// Create a Drizzle instance
+// Export a function that returns the singleton instance
 export default function db() {
-    return drizzle(client, { schema });
+    return drizzleInstance;
 }
+
+// Handle unexpected errors
+process.on('unhandledRejection', (err: Error) => {
+    console.error('Unhandled database promise rejection:', err);
+});
 
 export { schema };
 
