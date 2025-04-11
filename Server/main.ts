@@ -29,17 +29,21 @@ console.log('Starting server with configuration:', {
 // Configure CORS
 app.use(cors({
   origin: (origin, callback) => {
-    console.log('Incoming request from origin:', origin);
+    console.log('Request origin:', origin);
     console.log('Allowed origins:', allowedOrigins);
     
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
+    if (!origin) {
+      console.log('No origin provided, allowing request');
+      return callback(null, true);
+    }
+
     if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('CORS rejection for origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.log('Origin rejected:', origin);
+      callback(new Error(`CORS not allowed for origin: ${origin}`));
     }
   },
   credentials: true,
