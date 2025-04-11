@@ -3,48 +3,36 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev:server": "cd Server && nodemon --exec ts-node main.ts",
-    "dev:client": "cd Client && next dev",
     "dev": "nodemon --exec ts-node main.ts",
-    "server": "nodemon --exec ts-node main.ts",
+    "build": "tsc",
     "start": "node dist/main.js",
     "lint": "eslint . --ext .ts",
-    "db:generate": "cd Server && drizzle-kit generate:pg",
-    "db:migrate": "cd Server && ts-node Database/db/migrate.ts",
-    "db:studio": "cd Server && drizzle-kit studio",
-    "build": "tsc"
+    "db:generate": "drizzle-kit generate:pg",
+    "db:migrate": "ts-node Database/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "body-parser": "^1.20.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.0",
     "express": "^4.21.2",
-
     "pg": "^8.14.0",
     "postgres": "^3.4.5",
-    "recharts": "^2.15.1",
-    "sonner": "^2.0.1",
-    "supabase": "2.20.5",
-    "zod": "^3.24.2"
+    "typescript": "^5.8.2"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@types/body-parser": "^1.19.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.10",
-    "concurrently": "^8.0.0",
     "drizzle-kit": "^0.30.5",
     "eslint": "^9",
-    "eslint-config-next": "15.2.2",
     "nodemon": "^3.1.9",
-    "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "ts-node": "^10.9.2"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }
