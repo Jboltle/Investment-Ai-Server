@@ -13,6 +13,7 @@ router.get('/users/:userId', async (req: Request, res: Response) => {
     } else {
         console.log(user);
         res.status(200).json({"data": user});
+        
     }
 });
 
