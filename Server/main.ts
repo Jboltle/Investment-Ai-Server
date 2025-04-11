@@ -12,7 +12,7 @@ const app = express();
 // Define allowed origins
 const allowedOrigins = [
   'http://localhost:3000',                     // Local development
-  // Production frontend URL
+  'https://investment-ai-client.vercel.app',   // Production frontend URL
   process.env.NEXT_PUBLIC_URL,                 // Dynamic URL from env
 ];
 
@@ -28,12 +28,14 @@ console.log('Starting server with configuration:', {
 app.use(cors({
   origin: (origin, callback) => {
     console.log('Incoming request from origin:', origin);
-    // Allow requests with no origin (like mobile apps or curl requests)
+    console.log('Allowed origins:', allowedOrigins);
+    
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
+      console.log('CORS rejection for origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
