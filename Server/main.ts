@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const port = parseInt(process.env.PORT || '10000');
+const port = process.env.PORT || 1000;
 
 // Define allowed origins
 const allowedOrigins = [
@@ -42,6 +42,6 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-app.listen(port, '0.0.0.0', () => {
+app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
