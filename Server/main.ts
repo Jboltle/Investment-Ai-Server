@@ -13,8 +13,10 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',                     // Local development
   'https://investment-ai-client.vercel.app',   // Production frontend URL
+  'https://investment-ai-client-cwq74i9c7-jboltles-projects.vercel.app', // Preview URL
+  'https://investment-ai-client-f26dkmzrt-jboltles-projects.vercel.app', // Another preview URL
   process.env.NEXT_PUBLIC_URL,                 // Dynamic URL from env
-];
+].filter(Boolean); // Remove any undefined values
 
 // Always use environment PORT or 10000 as fallback
 const port = parseInt(process.env.PORT || '10000', 10);
@@ -30,9 +32,10 @@ app.use(cors({
     console.log('Incoming request from origin:', origin);
     console.log('Allowed origins:', allowedOrigins);
     
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log('CORS rejection for origin:', origin);
@@ -40,8 +43,18 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Accept',
+    'Origin',
+    'X-Requested-With',
+    'X-Client-Info',
+    'X-Supabase-Api-Version',
+    'apikey'
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
 app.use(json());
