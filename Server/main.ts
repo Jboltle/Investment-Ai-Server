@@ -10,10 +10,9 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',                     // Local development
   'https://investment-ai-client.vercel.app',   // Production frontend URL
-  'https://investment-ai-client-cwq74i9c7-jboltles-projects.vercel.app', // Preview URL
-  'https://investment-ai-client-f26dkmzrt-jboltles-projects.vercel.app', // Another preview URL
-  process.env.NEXT_PUBLIC_URL,                 // Dynamic URL from env
-].filter(Boolean); // Remove any undefined values
+  'https://investment-ai-client-b3wgjtrmg-jboltles-projects.vercel.app', // Current preview URL
+  'https://investment-ai-client-git-main-jboltles-projects.vercel.app',  // Git main preview
+].filter(Boolean);
 
 // Always use environment PORT or 10000 as fallback
 const port = parseInt(process.env.PORT || '10000', 10);
@@ -35,6 +34,13 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // For development, you might want to allow all origins temporarily
+    // Remove or comment this in production
+    callback(null, true);
+    return;
+
+    // Normal CORS check (uncomment in production)
+    /*
     if (allowedOrigins.includes(origin)) {
       console.log('Origin allowed:', origin);
       callback(null, true);
@@ -42,6 +48,7 @@ app.use(cors({
       console.log('Origin rejected:', origin);
       callback(new Error(`CORS not allowed for origin: ${origin}`));
     }
+    */
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
