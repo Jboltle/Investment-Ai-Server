@@ -2,10 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { json } from "body-parser";
 import { router } from "./Controller/routes";
-import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
 
 const app = express();
 
