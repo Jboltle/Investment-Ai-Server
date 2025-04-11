@@ -70,7 +70,14 @@ app.get('/api/health', (req: Request, res: Response) => {
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: any) => {
   console.error('Error:', err);
-  res.status(500).json({ error: 'Internal Server Error' });
+  
+  // Set CORS headers on error responses too
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  res.status(err.status || 500).json({ 
+    error: err.message || 'Internal Server Error' 
+  });
 });
 
 // Start server
