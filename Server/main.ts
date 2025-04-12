@@ -16,7 +16,7 @@ const allowedOrigins = [
     "https://investment-ai-client.vercel.app",   // Production frontend URL
     'https://investment-ai-client-b3wgjtrmg-jboltles-projects.vercel.app', // Current preview URL
     'https://investment-ai-client-git-main-jboltles-projects.vercel.app',  // Git main preview
-].filter(Boolean);
+]
 
 // Always use environment PORT or 10000 as fallback
 const port = process.env.PORT
@@ -83,15 +83,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction): void => {
 // Health check route - more detailed
 app.get('/api/health', (req: Request, res: Response) => {
   console.log('Health check endpoint called');
-  const healthCheck = {
-    status: 'ok',
-    timestamp: new Date(),
-    env: process.env.NODE_ENV,
-    database: process.env.DATABASE_URL ? 'configured' : 'missing',
-    uptime: process.uptime(),
-    memoryUsage: process.memoryUsage(),
-  };
-  res.json(healthCheck);
+  res.json({"Status": "OK"});
 });
 
 // Test database connection route
