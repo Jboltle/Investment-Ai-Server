@@ -49,8 +49,18 @@ app.use((req, res, next) => {
 // Configure CORS
 app.use(cors({
   origin: (origin, callback) => {
-    console.log('Request origin:', origin);
-    callback(null, true); // Allow all origins for now to debug
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked request from unauthorized origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -106,13 +116,9 @@ app.get('/api/dbtest', async (req: Request, res: Response) => {
 app.use('/api', router);
 
 // Global error handler
-app.use((err: AppError, req: Request, res: Response, next: NextFunction): void => {
+app.use((err: AppError, req: Request, res: Response): void => {
   console.error('Error:', err);
   console.error('Stack trace:', err.stack);
-  
-  // Set CORS headers
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
   
   const errorResponse: {
     error: string;
