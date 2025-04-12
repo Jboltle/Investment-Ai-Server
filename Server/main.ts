@@ -145,7 +145,7 @@ app.use((err: AppError, req: Request, res: Response, next: NextFunction): void =
 });
 
 // Start server with error handling
-const server = app.listen(port, '0.0.0.0', () => {
+const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
   console.log(`Health check available at http://localhost:${port}/api/health`);
   console.log(`Database test available at http://localhost:${port}/api/dbtest`);
