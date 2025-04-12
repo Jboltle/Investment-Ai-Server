@@ -1,7 +1,12 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { json } from "body-parser";
 import { router } from "./Controller/routes";
+import { sql } from 'drizzle-orm';
+
+interface AppError extends Error {
+  status?: number;
+}
 
 const app = express();
 
@@ -14,33 +19,38 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 // Always use environment PORT or 10000 as fallback
-const port = parseInt(process.env.PORT || '10000', 10);
+const port = process.env.PORT
 console.log('Starting server with configuration:', {
   port,
   env: process.env.NODE_ENV,
-  allowedOrigins
+  allowedOrigins,
+  databaseUrl: process.env.DATABASE_URL ? 'configured' : 'missing'
+});
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Starting`);
+  
+  // Log request headers in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Request headers:', req.headers);
+  }
+
+  // Log when the response is finished
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+  });
+
+  next();
 });
 
 // Configure CORS
 app.use(cors({
   origin: (origin, callback) => {
     console.log('Request origin:', origin);
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('No origin provided, allowing request');
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      console.log('Origin allowed:', origin);
-      callback(null, true);
-    } else {
-      console.log('Origin not in allowed list:', origin);
-      console.log('Allowed origins:', allowedOrigins);
-      // Still allow the request but log it
-      callback(null, true);
-    }
+    callback(null, true); // Allow all origins for now to debug
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -57,59 +67,108 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
-// Add CORS headers to all responses
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    // If origin is not in allowed list, still allow for development
-    res.setHeader('Access-Control-Allow-Origin', '*');
+// Basic middleware for parsing JSON and handling errors
+app.use(json());
+
+// Error handling for JSON parsing
+app.use((err: Error, req: Request, res: Response, next: NextFunction): void => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('JSON parsing error:', err);
+    res.status(400).json({ error: 'Invalid JSON' });
+    return;
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  next();
+  next(err);
 });
 
-app.use(json());
-app.use('/api', router);
-
-// Simple test route
+// Health check route - more detailed
 app.get('/api/health', (req: Request, res: Response) => {
   console.log('Health check endpoint called');
-  res.json({ status: 'ok', message: 'Server is running' });
+  const healthCheck = {
+    status: 'ok',
+    timestamp: new Date(),
+    env: process.env.NODE_ENV,
+    database: process.env.DATABASE_URL ? 'configured' : 'missing',
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+  };
+  res.json(healthCheck);
 });
+
+// Test database connection route
+app.get('/api/dbtest', async (req: Request, res: Response) => {
+  try {
+    const { default: db } = await import('./Database/db');
+    const client = db();
+    await client.execute(sql`SELECT 1`);
+    res.json({ status: 'Database connection successful' });
+  } catch (error) {
+    console.error('Database test failed:', error);
+    res.status(500).json({ 
+      error: 'Database connection failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Mount the router
+app.use('/api', router);
 
 // Global error handler
-app.use((err: any, req: Request, res: Response, next: any) => {
+app.use((err: AppError, req: Request, res: Response, next: NextFunction): void => {
   console.error('Error:', err);
+  console.error('Stack trace:', err.stack);
   
-  // Set CORS headers on error responses too
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else {
-    res.header('Access-Control-Allow-Origin', '*');
-  }
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Credentials', 'true');
   
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Internal Server Error' 
-  });
+  const errorResponse: {
+    error: string;
+    status: number;
+    timestamp: Date;
+    path: string;
+    method: string;
+    stack?: string;
+  } = {
+    error: err.message || 'Internal Server Error',
+    status: err.status || 500,
+    timestamp: new Date(),
+    path: req.path,
+    method: req.method,
+  };
+
+  if (process.env.NODE_ENV !== 'production') {
+    errorResponse.stack = err.stack;
+  }
+
+  res.status(errorResponse.status).json(errorResponse);
 });
 
-// Start server
+// Start server with error handling
 const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
   console.log(`Health check available at http://localhost:${port}/api/health`);
+  console.log(`Database test available at http://localhost:${port}/api/dbtest`);
+}).on('error', (error: Error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
 
-// Handle shutdown gracefully
+// Handle various process events
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
   server.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('Uncaught exception:', error);
+  console.error('Stack trace:', error.stack);
+});
+
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  console.error('Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
 });
