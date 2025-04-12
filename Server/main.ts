@@ -19,12 +19,14 @@ const allowedOrigins = [
 ]
 
 // Always use environment PORT or 10000 as fallback
-const port = process.env.PORT
+const port = parseInt(process.env.PORT || '10000', 10);
 console.log('Starting server with configuration:', {
   port,
   env: process.env.NODE_ENV,
   allowedOrigins,
-  databaseUrl: process.env.DATABASE_URL ? 'configured' : 'missing'
+  databaseUrl: process.env.DATABASE_URL ? 'configured' : 'missing',
+  nodeVersion: process.version,
+  platform: process.platform
 });
 
 // Request logging middleware
@@ -143,12 +145,19 @@ app.use((err: AppError, req: Request, res: Response): void => {
 });
 
 // Start server with error handling
-const server = app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
   console.log(`Health check available at http://localhost:${port}/api/health`);
   console.log(`Database test available at http://localhost:${port}/api/dbtest`);
+  console.log('Allowed origins:', allowedOrigins);
 }).on('error', (error: Error) => {
   console.error('Failed to start server:', error);
+  console.error('Error details:', {
+    code: (error as any).code,
+    syscall: (error as any).syscall,
+    port: port,
+    address: (error as any).address
+  });
   process.exit(1);
 });
 
