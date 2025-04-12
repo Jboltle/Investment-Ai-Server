@@ -3,7 +3,6 @@ import cors from "cors";
 import { json } from "body-parser";
 import { router } from "./Controller/routes";
 
-
 const app = express();
 
 // Define allowed origins
@@ -26,7 +25,6 @@ console.log('Starting server with configuration:', {
 app.use(cors({
   origin: (origin, callback) => {
     console.log('Request origin:', origin);
-    console.log('Allowed origins:', allowedOrigins);
     
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
@@ -34,21 +32,15 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // For development, you might want to allow all origins temporarily
-    // Remove or comment this in production
-    callback(null, true);
-    return;
-
-    // Normal CORS check (uncomment in production)
-    /*
     if (allowedOrigins.includes(origin)) {
       console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('Origin rejected:', origin);
-      callback(new Error(`CORS not allowed for origin: ${origin}`));
+      console.log('Origin not in allowed list:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      // Still allow the request but log it
+      callback(null, true);
     }
-    */
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -65,6 +57,21 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // If origin is not in allowed list, still allow for development
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  next();
+});
+
 app.use(json());
 app.use('/api', router);
 
@@ -79,7 +86,12 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   console.error('Error:', err);
   
   // Set CORS headers on error responses too
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
   res.header('Access-Control-Allow-Credentials', 'true');
   
   res.status(err.status || 500).json({ 
