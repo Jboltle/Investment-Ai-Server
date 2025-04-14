@@ -15,6 +15,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "body-parser": "^1.20.3",
+    "openai": "^4.93.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.0",
