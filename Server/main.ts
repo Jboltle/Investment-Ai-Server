@@ -16,7 +16,8 @@ const allowedOrigins = [
     'https://investment-ai-client.vercel.app',
     'https://investment-ai-client-b3wgjtrmg-jboltles-projects.vercel.app',
     'https://investment-ai-client-git-main-jboltles-projects.vercel.app',
-    'https://investment-ai-client-git-watchlist-aut-75a255-jboltles-projects.vercel.app'
+    'https://investment-ai-client-git-watchlist-aut-75a255-jboltles-projects.vercel.app',
+    'https://investment-ai-server-production.up.railway.app'
 ];
 
 // Log configuration on startup
@@ -32,25 +33,53 @@ console.log('Starting server with configuration:', {
 // CORS configuration - must be before other middleware
 app.use(cors({
     origin: function(origin, callback) {
+        console.log('Incoming request from origin:', origin);
+        console.log('Allowed origins:', allowedOrigins);
+
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) {
+            console.log('No origin provided, allowing request');
             callback(null, true);
             return;
         }
-
-        console.log('Request from origin:', origin);
 
         // Allow all origins in development
         if (process.env.NODE_ENV === 'development') {
+            console.log('Development mode, allowing all origins');
             callback(null, true);
             return;
         }
 
-        // Check if origin is allowed
-        if (allowedOrigins.includes(origin)) {
+        // Debug: Log exact comparison results
+        allowedOrigins.forEach(allowedOrigin => {
+            console.log(`Comparing origin "${origin}" with allowed origin "${allowedOrigin}"`);
+            console.log(`Direct comparison (===): ${origin === allowedOrigin}`);
+            console.log(`Includes check: ${origin.includes(allowedOrigin)}`);
+            console.log(`Trim comparison: ${origin.trim() === allowedOrigin.trim()}`);
+        });
+
+        // Check if origin is allowed - try multiple matching strategies
+        const isAllowed = allowedOrigins.some(allowedOrigin => {
+            // Try exact match first
+            if (origin === allowedOrigin) return true;
+            
+            // Try trimmed match
+            if (origin.trim() === allowedOrigin.trim()) return true;
+            
+            // Try case-insensitive match
+            if (origin.toLowerCase() === allowedOrigin.toLowerCase()) return true;
+            
+            return false;
+        });
+
+        console.log(`Origin ${origin} is ${isAllowed ? 'allowed' : 'not allowed'}`);
+
+        if (isAllowed) {
+            // Important: Use the actual origin in the response header
             callback(null, true);
         } else {
             console.warn(`Blocked request from unauthorized origin: ${origin}`);
+            console.warn('Expected one of:', allowedOrigins);
             callback(new Error('Not allowed by CORS'));
         }
     },
@@ -64,13 +93,31 @@ app.use(cors({
         'X-Requested-With',
         'X-Client-Info',
         'X-Supabase-Api-Version',
-        'apikey'
+        'apikey',
+        'Cookie',
+        'Set-Cookie'
     ],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    exposedHeaders: [
+        'Content-Range', 
+        'X-Content-Range',
+        'Set-Cookie'
+    ],
     maxAge: 86400, // 24 hours
     preflightContinue: false,
     optionsSuccessStatus: 204
 }));
+
+// Cookie middleware configuration
+app.use((req: Request, res: Response, next: NextFunction) => {
+    // Set secure cookie policy
+    res.cookie('cookieName', 'cookieValue', {
+        secure: true, // Requires HTTPS
+        sameSite: 'none', // Allow cross-site cookie
+        httpOnly: true, // Cannot be accessed by client-side scripts
+        path: '/'
+    });
+    next();
+});
 
 // Basic middleware for parsing JSON
 app.use(json());
@@ -107,6 +154,32 @@ app.get('/api/health', (req: Request, res: Response) => {
     res.json({ "status": "OK", "timestamp": new Date().toISOString() });
 });
 
+// CORS test endpoint
+app.get('/api/cors-test', (req: Request, res: Response) => {
+    try {
+        console.log('CORS test endpoint called');
+        console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+        console.log('Origin:', req.headers.origin);
+        console.log('Method:', req.method);
+        console.log('URL:', req.url);
+        
+        res.json({
+            status: 'OK',
+            origin: req.headers.origin,
+            timestamp: new Date().toISOString(),
+            headers: req.headers,
+            allowedOrigins: allowedOrigins
+        });
+    } catch (error) {
+        console.error('Error in CORS test endpoint:', error);
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: process.env.NODE_ENV !== 'production' ? (error instanceof Error ? error.stack : undefined) : undefined
+        });
+    }
+});
+
 // Test database connection route
 app.get('/api/dbtest', async (req: Request, res: Response) => {
   try {
@@ -128,14 +201,24 @@ app.use('/api', router);
 
 // Global error handler - must be last
 app.use((err: AppError, req: Request, res: Response, next: NextFunction): void => {
+    console.error('Global Error Handler');
     console.error('Error:', err);
     console.error('Stack trace:', err.stack);
+    console.error('Request URL:', req.url);
+    console.error('Request Method:', req.method);
+    console.error('Request Headers:', JSON.stringify(req.headers, null, 2));
 
     // Ensure CORS headers are set even in error cases
     const origin = req.headers.origin;
-    if (origin && allowedOrigins.includes(origin)) {
-        res.header('Access-Control-Allow-Origin', origin);
-        res.header('Access-Control-Allow-Credentials', 'true');
+    if (origin) {
+        console.log('Setting CORS headers for origin:', origin);
+        const isAllowed = allowedOrigins.includes(origin);
+        console.log('Origin is allowed:', isAllowed);
+        
+        if (isAllowed) {
+            res.header('Access-Control-Allow-Origin', origin);
+            res.header('Access-Control-Allow-Credentials', 'true');
+        }
     }
     
     const errorResponse = {
@@ -144,9 +227,12 @@ app.use((err: AppError, req: Request, res: Response, next: NextFunction): void =
         timestamp: new Date().toISOString(),
         path: req.path,
         method: req.method,
-        stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+        stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+        headers: req.headers,
+        origin: req.headers.origin
     };
 
+    console.log('Sending error response:', JSON.stringify(errorResponse, null, 2));
     res.status(errorResponse.status).json(errorResponse);
 });
 
