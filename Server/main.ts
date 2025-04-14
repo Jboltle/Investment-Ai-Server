@@ -15,7 +15,8 @@ const allowedOrigins = [
     'http://localhost:3000',                     // Local development
     "https://investment-ai-client.vercel.app",   // Production frontend URL
     'https://investment-ai-client-b3wgjtrmg-jboltles-projects.vercel.app', // Current preview URL
-    'https://investment-ai-client-git-main-jboltles-projects.vercel.app',  // Git main preview
+    'https://investment-ai-client-git-main-jboltles-projects.vercel.app/*',  // Git main preview
+    'https://investment-ai-client-git-watchlist-aut-75a255-jboltles-projects.vercel.app/*'  // Git watchlist preview
 ]
 
 // Always use environment PORT or 10000 as fallback
